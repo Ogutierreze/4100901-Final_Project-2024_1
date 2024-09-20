@@ -57,16 +57,18 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define BUTTON_LEFT_Pin GPIO_PIN_1
-#define BUTTON_LEFT_GPIO_Port GPIOA
-#define BUTTON_LEFT_EXTI_IRQn EXTI1_IRQn
-#define BUTTON_RIGHT_Pin GPIO_PIN_4
-#define BUTTON_RIGHT_GPIO_Port GPIOA
-#define BUTTON_RIGHT_EXTI_IRQn EXTI4_IRQn
-#define LED_HEARTBEAT_Pin GPIO_PIN_5
-#define LED_HEARTBEAT_GPIO_Port GPIOA
-#define LED_LEFT_Pin GPIO_PIN_7
-#define LED_LEFT_GPIO_Port GPIOA
+#define S1_Pin GPIO_PIN_1
+#define S1_GPIO_Port GPIOA
+#define S1_EXTI_IRQn EXTI1_IRQn
+#define S2_Pin GPIO_PIN_4
+#define S2_GPIO_Port GPIOA
+#define S2_EXTI_IRQn EXTI4_IRQn
+#define D1_Pin GPIO_PIN_5
+#define D1_GPIO_Port GPIOA
+#define D3_Pin GPIO_PIN_7
+#define D3_GPIO_Port GPIOA
+#define S3_Pin GPIO_PIN_0
+#define S3_GPIO_Port GPIOB
 #define COLUMN_1_Pin GPIO_PIN_10
 #define COLUMN_1_GPIO_Port GPIOB
 #define COLUMN_1_EXTI_IRQn EXTI15_10_IRQn
@@ -87,8 +89,8 @@ void Error_Handler(void);
 #define ROW_4_GPIO_Port GPIOB
 #define ROW_3_Pin GPIO_PIN_5
 #define ROW_3_GPIO_Port GPIOB
-#define LED_RIGHT_Pin GPIO_PIN_6
-#define LED_RIGHT_GPIO_Port GPIOB
+#define D4_Pin GPIO_PIN_6
+#define D4_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 
