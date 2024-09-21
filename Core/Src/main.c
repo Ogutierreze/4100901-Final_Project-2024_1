@@ -228,14 +228,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
 			if (current_time - last_debounce_time_parking >= DEBOUNCE_TIME) {
 
-				  // Tiempo de reset de 1 segundo, exeptuando el reset despues de dos pulsasiones.
-		        if (current_time - last_debounce_time_parking > 1000 && counter_parking < 2) {
-		        	counter_parking=0;
-		         }
-
-
-
-
 
 		// se inicia el contador de pulsos
 			    counter_parking++;
@@ -244,15 +236,24 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			    if(counter_parking==1){
 
 	        	    HAL_UART_Transmit(&huart2, "parking_on\r\n", 12, 10);
-	        	    parking_toggle = 0xEEEEE;
+
+	        	    parking_toggle=0xEEEE;
+	        	    ssd1306_Fill(Black);
+				    ssd1306_SetCursor(0, 10);
+				    ssd1306_WriteString("Parking light ON", Font_7x10, White);
+				    ssd1306_UpdateScreen();
 			    	}
 
 			     else if (counter_parking>=2){
-			    	 // si hay una tercera pulsasion se resetean los contadores (se apaga el led)
+			    	 // si hay una tercera pulsasion se resetean los contadores (se apaga el led)4
+			    	 ssd1306_Fill(Black);
+					 ssd1306_SetCursor(0, 10);
+					 ssd1306_WriteString("Parking light OFF", Font_7x10, White);
+					 ssd1306_UpdateScreen();
 			    	 HAL_UART_Transmit(&huart2, "parking_off\r\n",13, 10);
-			    	 counter_right=0;
-			    	 counter_left=0;
+
 			    	 parking_toggle = 0;
+			    	 counter_parking=0;
 
 			    	}
 			  }
@@ -287,7 +288,7 @@ void turn_signal_left(void)
 		}
 
 	}else{
-		HAL_GPIO_WritePin(D3_GPIO_Port, D3_Pin,1);
+//		HAL_GPIO_WritePin(D3_GPIO_Port, D3_Pin,1);
 	}
 
   }
@@ -313,7 +314,7 @@ void turn_signal_right (void){
 
 
 		} else{
-			HAL_GPIO_WritePin(D4_GPIO_Port, D4_Pin, 1);
+//			HAL_GPIO_WritePin(D4_GPIO_Port, D4_Pin, 1);
 
 		}
 
@@ -392,6 +393,7 @@ int main(void)
 	  turn_signal_right();
 	  signal_parking_light();
 	  heartbeat();
+
 
 
 
@@ -585,10 +587,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOA, D1_Pin|D3_Pin|ROW_1_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, ROW_2_Pin|ROW_4_Pin|ROW_3_Pin, GPIO_PIN_SET);
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(D4_GPIO_Port, D4_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, ROW_2_Pin|ROW_4_Pin|ROW_3_Pin|D4_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pins : S1_Pin S2_Pin */
   GPIO_InitStruct.Pin = S1_Pin|S2_Pin;
@@ -649,6 +648,9 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(D4_GPIO_Port, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+
   HAL_NVIC_SetPriority(EXTI1_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI1_IRQn);
 
