@@ -26,6 +26,7 @@
 #include "ssd1306.h"
 #include "ssd1306_fonts.h"
 #include "password_validator.h"
+#include "toggle_signal.h"
 
 #include "ring_buffer.h"
 #include "keypad.h"
