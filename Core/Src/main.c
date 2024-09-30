@@ -18,7 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-
+#include "turn_signal.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
@@ -26,7 +26,6 @@
 #include "ssd1306.h"
 #include "ssd1306_fonts.h"
 #include "password_validator.h"
-#include "toggle_signal.h"
 
 #include "ring_buffer.h"
 #include "keypad.h"
@@ -61,6 +60,7 @@ uint8_t flashing_active = 0;  // Bandera para activar o desactivar el parpadeo
 uint8_t flashing_active2=0;
 uint8_t flashing_frequency=0;
 uint8_t flashing_frequency2=0;
+uint8_t flag_parking=0;
 
 uint8_t flag_B1=0;
 /* USER CODE END Includes */
@@ -136,162 +136,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-	uint32_t current_time = HAL_GetTick();
-	//uint8_t key_pressed = keypad_scan(GPIO_Pin);
-
-	 if (GPIO_Pin == S1_Pin){
-
-			if (current_time - last_debounce_time_left >= DEBOUNCE_TIME) {
-
-				  // Tiempo de reset de 1 segundo, exeptuando el reset despues de dos pulsasiones.
-		        if (current_time - last_debounce_time_left > 1000 && counter_left < 2) {
-		             counter_left = 0;
-		         }
-
-
-
-		// se inicia el contador de pulsos
-			    counter_left++;
-			    last_debounce_time_left = current_time;
-
-			    if(counter_left==1){
-			    	right_toggles=0;
-			    	counter_right=0;
-
-
-
-	        	    HAL_UART_Transmit(&huart2, "S1\r\n", 4, 10);
-			    	left_toggles = 6;
-					ssd1306_Fill(Black);
-					ssd1306_SetCursor(25, 30);
-					ssd1306_WriteString("left Light ON", Font_7x10, White);
-					ssd1306_UpdateScreen();
-
-			    	}
-			    else if(counter_left==2){
-
-			    	HAL_UART_Transmit(&huart2, "S1_toggles\r\n",12, 10);
-			    	left_toggles = 0xEEEEEEE;  // Contador muy grande, hace que haya un parpadeo practicamente infito.
-
-					ssd1306_Fill(Black);
-					ssd1306_SetCursor(25, 30);
-					ssd1306_WriteString("left Light ON", Font_7x10, White);
-					ssd1306_UpdateScreen();
-
-
-
-			    	}
-			     else if (counter_left>=3){
-			    	 // si hay una tercera pulsasion se resetean los contadores (se apaga el led)
-			    	 HAL_UART_Transmit(&huart2, "S1_off\r\n",8, 10);
-			    	 counter_left=0;
-			    	 left_toggles = 0;
-					  ssd1306_Fill(Black);
-					  ssd1306_SetCursor(25, 30);
-					  ssd1306_WriteString("left Light OFF", Font_7x10, White);
-					  ssd1306_UpdateScreen();
-
-			    	}
-
-
-
-
-			  }
-
-	 }
-
-	 if (GPIO_Pin == S2_Pin){
-
-			if (current_time - last_debounce_time_left >= DEBOUNCE_TIME) {
-
-				  // Tiempo de reset de 1 segundo, exeptuando el reset despues de dos pulsasiones.
-		        if (current_time - last_debounce_time_right > 1000 && counter_right < 2) {
-		             counter_right = 0;
-		         }
-
-
-
-		// se inicia el contador de pulsos
-			    counter_right++;
-			    last_debounce_time_right = current_time;
-
-			    if(counter_right==1){
-			    	left_toggles=0;
-			    	counter_left=0;
-
-	        	    HAL_UART_Transmit(&huart2, "S2\r\n", 4, 10);
-			    	right_toggles = 6;
-
-					ssd1306_Fill(Black);
-					ssd1306_SetCursor(25, 10);
-					ssd1306_WriteString("right Light ON", Font_7x10, White);
-					ssd1306_UpdateScreen();
-			    	}
-			    else if(counter_right==2){
-
-			    	HAL_UART_Transmit(&huart2, "S2_toggles\r\n",12, 10);
-			    	right_toggles = 0xEEEEEEE;  // Contador muy grande, hace que haya un parpadeo practicamente infito.
-			    	ssd1306_Fill(Black);
-			    	ssd1306_SetCursor(25, 10);
-			    	ssd1306_WriteString("right Light ON", Font_7x10, White);
-			    	ssd1306_UpdateScreen();
-
-
-
-			    	}
-			     else if (counter_right>=3){
-
-			    	 // si hay una tercera pulsasion se resetean los contadores (se apaga el led)
-			    	 HAL_UART_Transmit(&huart2, "S2_off\r\n",8, 10);
-			    	 counter_right=0;
-			    	 right_toggles = 0;
-				     ssd1306_Fill(Black);
-				     ssd1306_SetCursor(25, 10);
-				     ssd1306_WriteString("right Light OFF", Font_7x10, White);
-				     ssd1306_UpdateScreen();
-
-			    	}
-
-
-			  }
-
-	 }
-
-	 if (GPIO_Pin == S3_Pin){
-
-			if (current_time - last_debounce_time_parking >= DEBOUNCE_TIME) {
-
-
-		// se inicia el contador de pulsos
-			    counter_parking++;
-			    last_debounce_time_parking = current_time;
-
-			    if(counter_parking==1){
-
-	        	    HAL_UART_Transmit(&huart2, "parking_on\r\n", 12, 10);
-
-	        	    parking_toggle=0xEEEE;
-	        	    ssd1306_Fill(Black);
-				    ssd1306_SetCursor(0, 10);
-				    ssd1306_WriteString("Parking light ON", Font_7x10, White);
-				    ssd1306_UpdateScreen();
-			    	}
-
-			     else if (counter_parking>=2){
-			    	 // si hay una tercera pulsasion se resetean los contadores (se apaga el led)4
-			    	 ssd1306_Fill(Black);
-					 ssd1306_SetCursor(0, 10);
-					 ssd1306_WriteString("Parking light OFF", Font_7x10, White);
-					 ssd1306_UpdateScreen();
-			    	 HAL_UART_Transmit(&huart2, "parking_off\r\n",13, 10);
-
-			    	 parking_toggle = 0;
-			    	 counter_parking=0;
-
-			    	}
-			  }
-	 }
-
+      handle_all_buttons(GPIO_Pin);  // Llama a la función que maneja las interrupciones
 
 	  uint8_t key_pressed = keypad_scan(GPIO_Pin);
 
@@ -427,6 +272,109 @@ void signal_parking_light (void){
 		}
 
 	}
+}
+
+
+
+
+void handle_all_buttons(uint16_t GPIO_Pin) {
+    // Lógica para apagar la luz derecha si se presiona S1 (luz izquierda)
+    if (GPIO_Pin == S1_Pin) {
+    	if(flag_parking==0){
+            if (right_toggles > 0) {
+                right_toggles = 0;  // Apaga la luz derecha si está parpadeando
+                HAL_GPIO_WritePin(D4_GPIO_Port, D4_Pin, 1);  // Apaga el LED derecho
+                HAL_UART_Transmit(&huart2, "Right light off (due to S1)\r\n", 30, 10);
+
+            }
+            handle_turn_signal(D3_GPIO_Port, D3_Pin, &counter_left, &left_toggles, 200, "S1\r\n", "S1_off\r\n");
+
+
+    	}
+
+    }
+
+    // Lógica para apagar la luz izquierda si se presiona S2 (luz derecha)
+    if (GPIO_Pin == S2_Pin) {
+    	if(flag_parking==0){
+            if (left_toggles > 0) {
+                left_toggles = 0;  // Apaga la luz izquierda si está parpadeando
+                HAL_GPIO_WritePin(D3_GPIO_Port, D3_Pin, 1);  // Apaga el LED izquierdo
+                HAL_UART_Transmit(&huart2, (uint8_t *)"Left light off (due to S2)\r\n", 29, 10);
+            }
+            handle_turn_signal(D4_GPIO_Port, D4_Pin, &counter_right, &right_toggles, 200, "S2\r\n", "S2_off\r\n");
+
+    	}
+
+
+    }
+
+    // Lógica para apagar ambas luces si se presiona S3 (luces de parqueo)
+    if (GPIO_Pin == S3_Pin) {
+        if (left_toggles > 0 || right_toggles > 0) {
+            left_toggles = 0;  // Apaga la luz izquierda si está encendida
+            right_toggles = 0;  // Apaga la luz derecha si está encendida
+            HAL_GPIO_WritePin(D3_GPIO_Port, D3_Pin, 1);  // Apaga el LED izquierdo
+            HAL_GPIO_WritePin(D4_GPIO_Port, D4_Pin, 1);  // Apaga el LED derecho
+            HAL_UART_Transmit(&huart2, (uint8_t *)"Both lights off (due to S3)\r\n", 31, 10);
+        }
+
+        handle_parking_lights(D3_GPIO_Port, D3_Pin, D4_GPIO_Port, D4_Pin, &counter_parking, &parking_toggle, 300, "Parking ON\r\n", "Parking OFF\r\n");
+
+    }
+}
+
+
+// Función para manejar el botón y los toggles (izquierda o derecha)
+void handle_turn_signal(GPIO_TypeDef* GPIO_Port, uint16_t GPIO_Pin, uint32_t* counter, uint32_t* toggles, uint32_t blink_interval, char* uart_msg_on, char* uart_msg_off) {
+    uint32_t current_time = HAL_GetTick();
+
+    if (current_time - last_debounce_time_left >= DEBOUNCE_TIME) {
+
+        if (current_time - last_debounce_time_left > 1000 && *counter < 2) {
+            *counter = 0;  // Reinicia el contador si ha pasado suficiente tiempo sin una segunda pulsación
+        }
+
+        (*counter)++;
+        last_debounce_time_left = current_time;
+
+        if (*counter == 1) {
+            *toggles = 6;  // 6 parpadeos
+            HAL_UART_Transmit(&huart2, uart_msg_on, strlen(uart_msg_on), 10);
+        } else if (*counter == 2) {
+            *toggles = 0xEEEEEEE;  // Parpadeo infinito
+            HAL_UART_Transmit(&huart2, uart_msg_on, strlen(uart_msg_on), 10);
+        } else if (*counter >= 3) {
+            *counter = 0;
+            *toggles = 0;  // Apagar la luz
+            HAL_UART_Transmit(&huart2, uart_msg_off, strlen(uart_msg_off), 10);
+            HAL_GPIO_WritePin(GPIO_Port, GPIO_Pin, 1);
+        }
+    }
+}
+
+// Función para manejar las luces de estacionamiento (ambas luces a la vez)
+void handle_parking_lights(GPIO_TypeDef* GPIO_Port_Left, uint16_t GPIO_Pin_Left, GPIO_TypeDef* GPIO_Port_Right, uint16_t GPIO_Pin_Right, uint32_t* counter, uint32_t* toggles, uint32_t blink_interval, char* uart_msg_on, char* uart_msg_off) {
+    uint32_t current_time = HAL_GetTick();
+
+    if (current_time - last_debounce_time_parking >= DEBOUNCE_TIME) {
+        (*counter)++;
+        last_debounce_time_parking = current_time;
+
+        if (*counter == 1) {
+            *toggles = 0xEEEE;  // Parpadeo continuo para las luces de estacionamiento
+            HAL_UART_Transmit(&huart2, uart_msg_on, strlen(uart_msg_on), 10);
+        } else if (*counter >= 2) {
+            *toggles = 0;  // Apagar ambas luces
+            HAL_UART_Transmit(&huart2, uart_msg_off, strlen(uart_msg_off), 10);
+            *counter = 0;
+            HAL_GPIO_WritePin(GPIO_Port_Right, GPIO_Pin_Right, 1);
+            HAL_GPIO_WritePin(GPIO_Port_Left, GPIO_Pin_Left, 1);
+
+
+
+        }
+    }
 }
 /* USER CODE END 0 */
 
