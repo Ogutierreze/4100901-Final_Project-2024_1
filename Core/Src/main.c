@@ -25,6 +25,7 @@
 
 #include "ssd1306.h"
 #include "ssd1306_fonts.h"
+#include "password_validator.h"
 
 #include "ring_buffer.h"
 #include "keypad.h"
@@ -160,10 +161,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
 	        	    HAL_UART_Transmit(&huart2, "S1\r\n", 4, 10);
 			    	left_toggles = 6;
-//					ssd1306_Fill(Black);
-//					ssd1306_SetCursor(25, 30);
-//					ssd1306_WriteString("left Light ON", Font_7x10, White);
-//					ssd1306_UpdateScreen();
+					ssd1306_Fill(Black);
+					ssd1306_SetCursor(25, 30);
+					ssd1306_WriteString("left Light ON", Font_7x10, White);
+					ssd1306_UpdateScreen();
 
 			    	}
 			    else if(counter_left==2){
@@ -171,10 +172,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			    	HAL_UART_Transmit(&huart2, "S1_toggles\r\n",12, 10);
 			    	left_toggles = 0xEEEEEEE;  // Contador muy grande, hace que haya un parpadeo practicamente infito.
 
-//					ssd1306_Fill(Black);
-//					ssd1306_SetCursor(25, 30);
-//					ssd1306_WriteString("left Light ON", Font_7x10, White);
-//					ssd1306_UpdateScreen();
+					ssd1306_Fill(Black);
+					ssd1306_SetCursor(25, 30);
+					ssd1306_WriteString("left Light ON", Font_7x10, White);
+					ssd1306_UpdateScreen();
 
 
 
@@ -184,10 +185,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			    	 HAL_UART_Transmit(&huart2, "S1_off\r\n",8, 10);
 			    	 counter_left=0;
 			    	 left_toggles = 0;
-//					  ssd1306_Fill(Black);
-//					  ssd1306_SetCursor(25, 30);
-//					  ssd1306_WriteString("left Light OFF", Font_7x10, White);
-//					  ssd1306_UpdateScreen();
+					  ssd1306_Fill(Black);
+					  ssd1306_SetCursor(25, 30);
+					  ssd1306_WriteString("left Light OFF", Font_7x10, White);
+					  ssd1306_UpdateScreen();
 
 			    	}
 
@@ -220,19 +221,19 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	        	    HAL_UART_Transmit(&huart2, "S2\r\n", 4, 10);
 			    	right_toggles = 6;
 
-//					ssd1306_Fill(Black);
-//					ssd1306_SetCursor(25, 10);
-//					ssd1306_WriteString("right Light ON", Font_7x10, White);
-//					ssd1306_UpdateScreen();
+					ssd1306_Fill(Black);
+					ssd1306_SetCursor(25, 10);
+					ssd1306_WriteString("right Light ON", Font_7x10, White);
+					ssd1306_UpdateScreen();
 			    	}
 			    else if(counter_right==2){
 
 			    	HAL_UART_Transmit(&huart2, "S2_toggles\r\n",12, 10);
 			    	right_toggles = 0xEEEEEEE;  // Contador muy grande, hace que haya un parpadeo practicamente infito.
-//			    	ssd1306_Fill(Black);
-//			    	ssd1306_SetCursor(25, 10);
-//			    	ssd1306_WriteString("right Light ON", Font_7x10, White);
-//			    	ssd1306_UpdateScreen();
+			    	ssd1306_Fill(Black);
+			    	ssd1306_SetCursor(25, 10);
+			    	ssd1306_WriteString("right Light ON", Font_7x10, White);
+			    	ssd1306_UpdateScreen();
 
 
 
@@ -243,10 +244,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			    	 HAL_UART_Transmit(&huart2, "S2_off\r\n",8, 10);
 			    	 counter_right=0;
 			    	 right_toggles = 0;
-//				     ssd1306_Fill(Black);
-//				     ssd1306_SetCursor(25, 10);
-//				     ssd1306_WriteString("right Light OFF", Font_7x10, White);
-//				     ssd1306_UpdateScreen();
+				     ssd1306_Fill(Black);
+				     ssd1306_SetCursor(25, 10);
+				     ssd1306_WriteString("right Light OFF", Font_7x10, White);
+				     ssd1306_UpdateScreen();
 
 			    	}
 
@@ -269,18 +270,18 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	        	    HAL_UART_Transmit(&huart2, "parking_on\r\n", 12, 10);
 
 	        	    parking_toggle=0xEEEE;
-//	        	    ssd1306_Fill(Black);
-//				    ssd1306_SetCursor(0, 10);
-//				    ssd1306_WriteString("Parking light ON", Font_7x10, White);
-//				    ssd1306_UpdateScreen();
+	        	    ssd1306_Fill(Black);
+				    ssd1306_SetCursor(0, 10);
+				    ssd1306_WriteString("Parking light ON", Font_7x10, White);
+				    ssd1306_UpdateScreen();
 			    	}
 
 			     else if (counter_parking>=2){
 			    	 // si hay una tercera pulsasion se resetean los contadores (se apaga el led)4
-//			    	 ssd1306_Fill(Black);
-//					 ssd1306_SetCursor(0, 10);
-//					 ssd1306_WriteString("Parking light OFF", Font_7x10, White);
-//					 ssd1306_UpdateScreen();
+			    	 ssd1306_Fill(Black);
+					 ssd1306_SetCursor(0, 10);
+					 ssd1306_WriteString("Parking light OFF", Font_7x10, White);
+					 ssd1306_UpdateScreen();
 			    	 HAL_UART_Transmit(&huart2, "parking_off\r\n",13, 10);
 
 			    	 parking_toggle = 0;
@@ -290,95 +291,61 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			  }
 	 }
 
-	   // Detectar si la interrupción es causada por el botón en PC13
-	    if (GPIO_Pin == B1_Pin) {
-	        // Botón en PC13 presionado, realizar la suma de los dígitos ingresados
-	        int sum = 0;
-	        for (uint8_t i = 0; i < buffer_index; i++) {
-	            if (display_buffer[i] >= '0' && display_buffer[i] <= '9') {
-	                sum += display_buffer[i] - '0'; // Convertir char a int y sumar
-	            }
-	        }
 
-	        // Mostrar la suma en la pantalla
-	        char sum_str[20];
-	        snprintf(sum_str, sizeof(sum_str), "Suma: %d", sum);
+	  uint8_t key_pressed = keypad_scan(GPIO_Pin);
 
-//	        ssd1306_Fill(Black);
-//	        ssd1306_SetCursor(10, 20);
-//	        ssd1306_WriteString(sum_str, Font_6x8, White);
-//	        ssd1306_UpdateScreen();
-	        HAL_UART_Transmit(&huart2, (uint8_t*)sum_str, strlen(sum_str), 10);
-
-	        // Reiniciar el buffer después de mostrar la suma
-	        ring_buffer_reset(&keyboard_ring_buffer);
-	        memset(display_buffer, 0, sizeof(display_buffer)); // Limpiar el buffer de pantalla
-	        buffer_index = 0; // Reiniciar el índice del buffer
-	        cursor_x = 10;  // Reinicia la posición horizontal del cursor
-	        cursor_y = 30;  // Reinicia la posición vertical del cursor
-	        return;
-	    }
-
-	    // Código existente para el teclado matricial
-	    uint8_t key_pressed = keypad_scan(GPIO_Pin);
 	    if (key_pressed != 0xFF) {
-	        // Si se presiona '*', reinicia la secuencia
+
 	        if (key_pressed == '*') {
 	            ring_buffer_reset(&keyboard_ring_buffer);
 	            memset(display_buffer, 0, sizeof(display_buffer)); // Limpiar el buffer de pantalla
 	            buffer_index = 0; // Reiniciar el índice del buffer
 
-//	            ssd1306_Fill(Black);
-//	            ssd1306_SetCursor(10, 20);
-//	            ssd1306_WriteString("Secuencia reiniciada", Font_6x8, White);
-//	            ssd1306_UpdateScreen();
-//	            HAL_UART_Transmit(&huart2, (uint8_t*)"Secuencia reiniciada\n\r", 22, 10);
-	            return;
-	        }
-
-	        // Contar la cantidad de dígitos en el buffer
-	        uint8_t digit_count = 0;
-	        for (uint8_t i = 0; i < buffer_index; i++) {
-	            if (display_buffer[i] >= '0' && display_buffer[i] <= '9') {
-	                digit_count++;
-	            }
-	        }
-
-	        // Verificar si ya se ingresaron 4 dígitos
-	        if (digit_count >= 4) {
-	            // Mostrar mensaje "Espacio lleno" y reiniciar la secuencia
-//	            ssd1306_Fill(Black);
-//	            ssd1306_SetCursor(10, 20);
-//	            ssd1306_WriteString("Espacio lleno", Font_6x8, White);
-//	            ssd1306_UpdateScreen();
-	            HAL_UART_Transmit(&huart2, (uint8_t*)"Espacio lleno\n\r", 15, 10);
-
-	            // Reiniciar el buffer
-	            ring_buffer_reset(&keyboard_ring_buffer);
-	            memset(display_buffer, 0, sizeof(display_buffer)); // Limpiar el buffer de pantalla
-	            buffer_index = 0; // Reiniciar el índice del buffer
+	            ssd1306_Fill(Black);
+	            ssd1306_SetCursor(10, 20);
+	            ssd1306_WriteString("Secuencia reiniciada", Font_6x8, White);
+	            ssd1306_UpdateScreen();
+	            HAL_UART_Transmit(&huart2, (uint8_t*)"Secuencia reiniciada\n\r", 22, 10);
 	            return;
 	        }
 
 	        // Escribir la tecla en el ring buffer
-	        if (key_pressed != '#') { // Ya no se usará '#' para sumar
+	        if (key_pressed != '#') {
 	            ring_buffer_write(&keyboard_ring_buffer, key_pressed);
 
-	            // Agregar el carácter al buffer de pantalla
 	            if (buffer_index < MAX_DISPLAY_CHARS) {
 	                display_buffer[buffer_index++] = key_pressed;
 	                display_buffer[buffer_index] = '\0'; // Null-terminar el buffer
 
-	                // Limpiar la pantalla y mostrar el contenido del buffer
-//	                ssd1306_Fill(Black);
-//	                ssd1306_SetCursor(10, 30);
-//	                ssd1306_WriteString(display_buffer, Font_6x8, White);
-//	                ssd1306_UpdateScreen();
-
-	                // Transmitir el carácter a través de UART en tiempo real
+	                ssd1306_Fill(Black);
+	                ssd1306_SetCursor(10, 30);
+	                ssd1306_WriteString(display_buffer, Font_6x8, White);
+	                ssd1306_UpdateScreen();
 	                HAL_UART_Transmit(&huart2, &key_pressed, 1, 10);
 	            }
+	            return;
 	        }
+
+	        // Validar contraseña
+	        const char my_id2[] = "1053871674";
+	        uint8_t result = validate_password(my_id2, &keyboard_ring_buffer);
+
+	        if (result == 1) {
+	            HAL_UART_Transmit(&huart2, (uint8_t*)"Contrasena Correcta\n\r", 21, 10);
+	            HAL_UART_Transmit(&huart2, (uint8_t*)"Iniciando...\n\r", 14, 10);
+	        } else {
+	            HAL_UART_Transmit(&huart2, (uint8_t*)"Incorrecto\n\r", 12, 10);
+	            left_toggles = 6;
+	            flashing_active = 1;
+	            flashing_frequency = 125;
+	        }
+
+	        // Reiniciar buffer y display
+	        ring_buffer_reset(&keyboard_ring_buffer);
+	        memset(display_buffer, 0, sizeof(display_buffer));
+	        buffer_index = 0;
+	        cursor_x = 10;
+	        cursor_y = 30;
 	    }
 }
 
@@ -401,10 +368,10 @@ void turn_signal_left(void)
 		left_toggles--;
 		if(left_toggles==0){
 
-//			ssd1306_Fill(Black);
-//			ssd1306_SetCursor(25, 30);
-//			ssd1306_WriteString("left Light OFF", Font_7x10, White);
-//			ssd1306_UpdateScreen();
+			ssd1306_Fill(Black);
+			ssd1306_SetCursor(25, 30);
+			ssd1306_WriteString("left Light OFF", Font_7x10, White);
+			ssd1306_UpdateScreen();
 
 
 		}
@@ -496,10 +463,10 @@ int main(void)
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
 
-//  ssd1306_Init();
-//  ssd1306_SetCursor(25, 30);
-//  ssd1306_WriteString("Hello World!", Font_7x10, White);
-//  ssd1306_UpdateScreen();
+  ssd1306_Init();
+  ssd1306_SetCursor(25, 30);
+  ssd1306_WriteString("Hello World!", Font_7x10, White);
+  ssd1306_UpdateScreen();
 
   ring_buffer_init(&usart2_rb, usart2_buffer, USART2_BUFFER_SIZE);
   /* USER CODE END 2 */
