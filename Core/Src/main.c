@@ -36,6 +36,18 @@ uint8_t newline[] = "\r\n";
 #define BUFFER_CAPACITY 10
 uint8_t keyboard_buffer_memory[BUFFER_CAPACITY];
 ring_buffer_t keyboard_ring_buffer;
+
+#define USART2_BUFFER_SIZE 10
+uint8_t usart2_buffer[USART2_BUFFER_SIZE];
+ring_buffer_t usart2_rb;
+uint8_t usart2_rx;
+
+#define MAX_PASSWORD_LENGTH 10
+char current_password[MAX_PASSWORD_LENGTH] = "12345";
+uint8_t changing_password = 0;
+char new_password[MAX_PASSWORD_LENGTH];
+uint8_t new_password_index = 0;
+
 uint8_t first_key_pressed = 0;
 uint8_t cursor_x_position = 10;  // Control de la posición del cursor horizontal
 uint8_t cursor_y_position = 30;  // Línea en la que aparecerán las teclas
@@ -54,15 +66,16 @@ uint16_t left_toggles=0;
 uint8_t incorrect_password_toggles = 6;  // Parpadeos para contraseña incorrecta
 uint32_t incorrect_password_interval = 125;  // 125 ms entre parpadeos
 uint16_t left_toggles2=0;
-uint8_t warning_toggles = 10;  // Parpadeos para otro caso
-uint32_t warning_interval = 500;  // 500 ms entre parpadeos
-uint8_t flashing_active = 0;  // Bandera para activar o desactivar el parpadeo
-uint8_t flashing_active2=0;
-uint8_t flashing_frequency=0;
-uint8_t flashing_frequency2=0;
-uint8_t flag_parking=0;
+uint8_t authorized_access=0;
+uint8_t flag_parking;
+uint8_t validate_uart=2;
+uint8_t key_pressed=0xFF;
+uint8_t detected_d=0;
+uint8_t detected_a=0;
+uint8_t detected_b=0;
 
-uint8_t flag_B1=0;
+
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -88,10 +101,7 @@ UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
 
-#define USART2_BUFFER_SIZE 8
-uint8_t usart2_buffer[USART2_BUFFER_SIZE];
-ring_buffer_t usart2_rb;
-uint8_t usart2_rx;
+
 
 uint32_t left_last_press_tick = 0;
 uint16_t right_toggles=0;
@@ -128,72 +138,154 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
   /* Data received in USART2 */
   if (huart->Instance == USART2) {
 	  usart2_rx = USART2->RDR; // leyendo el byte recibido de USART2
-	  ring_buffer_write(&usart2_rb, usart2_rx); // put the data received in buffer
-	  //HAL_UART_Receive_IT(&huart2, &usart2_rx, 1); // enable interrupt to continue receiving
+	  ring_buffer_write(&usart2_rb, usart2_rx);
+	  }
+
+	  // put the data received in buffer
+	  HAL_UART_Receive_IT(&huart2, &usart2_rx, 1); // enable interrupt to continue receiving
 	  ATOMIC_SET_BIT(USART2->CR1, USART_CR1_RXNEIE); // usando un funcion mas liviana para reducir memoria
   }
-}
+
+
+
+// Contraseña actual, inicialmente es la contraseña por defecto "12345"
+
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-      handle_all_buttons(GPIO_Pin);  // Llama a la función que maneja las interrupciones
+    key_pressed = keypad_scan(GPIO_Pin);
 
-	  uint8_t key_pressed = keypad_scan(GPIO_Pin);
+    // Si el sistema tiene acceso autorizado
+    if (authorized_access == 1) {
+        handle_all_buttons(GPIO_Pin);
+    }
 
-	    if (key_pressed != 0xFF) {
+    if (key_pressed != 0xFF) {
 
-	        if (key_pressed == '*') {
-	            ring_buffer_reset(&keyboard_ring_buffer);
-	            memset(display_buffer, 0, sizeof(display_buffer)); // Limpiar el buffer de pantalla
-	            buffer_index = 0; // Reiniciar el índice del buffer
+        // Resetear secuencia
+        if (key_pressed == '*') {
+            ring_buffer_reset(&keyboard_ring_buffer);
+            memset(display_buffer, 0, sizeof(display_buffer)); // Limpiar el buffer de pantalla
+            buffer_index = 0; // Reiniciar el índice del buffer
 
-	            ssd1306_Fill(Black);
-	            ssd1306_SetCursor(10, 20);
-	            ssd1306_WriteString("Secuencia reiniciada", Font_6x8, White);
-	            ssd1306_UpdateScreen();
-	            HAL_UART_Transmit(&huart2, (uint8_t*)"Secuencia reiniciada\n\r", 22, 10);
-	            return;
-	        }
+            ssd1306_Fill(Black);
+            ssd1306_SetCursor(10, 20);
+            ssd1306_WriteString("Secuencia reiniciada", Font_6x8, White);
+            ssd1306_UpdateScreen();
+            HAL_UART_Transmit(&huart2, (uint8_t*)"Secuencia reiniciada\n\r", 22, 10);
+            return;
+        }
 
-	        // Escribir la tecla en el ring buffer
-	        if (key_pressed != '#') {
-	            ring_buffer_write(&keyboard_ring_buffer, key_pressed);
+        if (key_pressed == 'A') {
+            if (authorized_access == 1 && !changing_password) {
+                // Cambiar a estado de cambio de contraseña
+                changing_password = 1;
+                new_password_index = 0;  // Reiniciar índice de la nueva contraseña
 
-	            if (buffer_index < MAX_DISPLAY_CHARS) {
-	                display_buffer[buffer_index++] = key_pressed;
-	                display_buffer[buffer_index] = '\0'; // Null-terminar el buffer
+                // Mostrar mensaje de cambio de contraseña en la pantalla
+                ssd1306_Fill(Black);
+                ssd1306_SetCursor(10, 10);
+                ssd1306_WriteString("Cambio de", Font_6x8, White);
+                ssd1306_SetCursor(10, 20);
+                ssd1306_WriteString("contrasena", Font_6x8, White);
+                ssd1306_SetCursor(10, 40);
+                ssd1306_WriteString("Ingrese nueva", Font_6x8, White);
+                ssd1306_SetCursor(10, 50);
+                ssd1306_WriteString("y presione #", Font_6x8, White);
+                ssd1306_UpdateScreen();
 
-	                ssd1306_Fill(Black);
-	                ssd1306_SetCursor(10, 30);
-	                ssd1306_WriteString(display_buffer, Font_6x8, White);
-	                ssd1306_UpdateScreen();
-	                HAL_UART_Transmit(&huart2, &key_pressed, 1, 10);
-	            }
-	            return;
-	        }
+                return;
+            }
+        }
 
-	        // Validar contraseña
-	        const char my_id2[] = "1053871674";
-	        uint8_t result = validate_password(my_id2, &keyboard_ring_buffer);
+        if (key_pressed == 'B') {
+            detected_b = 1;
+        }
 
-	        if (result == 1) {
-	            HAL_UART_Transmit(&huart2, (uint8_t*)"Contrasena Correcta\n\r", 21, 10);
-	            HAL_UART_Transmit(&huart2, (uint8_t*)"Iniciando...\n\r", 14, 10);
-	        } else {
-	            HAL_UART_Transmit(&huart2, (uint8_t*)"Incorrecto\n\r", 12, 10);
-	            left_toggles = 6;
-	            flashing_active = 1;
-	            flashing_frequency = 125;
-	        }
+        // Si estamos en el estado de cambiar la contraseña
+        if (changing_password) {
+            if (key_pressed == '#') {
+                // Cuando el usuario presiona '#', validar la contraseña ingresada
+                if (new_password_index > 0) {
+                    strncpy(current_password, new_password, MAX_PASSWORD_LENGTH);  // Guardar la nueva contraseña
 
-	        // Reiniciar buffer y display
-	        ring_buffer_reset(&keyboard_ring_buffer);
-	        memset(display_buffer, 0, sizeof(display_buffer));
-	        buffer_index = 0;
-	        cursor_x = 10;
-	        cursor_y = 30;
-	    }
+                    // Mostrar mensaje de éxito en la pantalla
+                    ssd1306_Fill(Black);
+                    ssd1306_SetCursor(10, 20);
+                    ssd1306_WriteString("Contrasena", Font_6x8, White);
+                    ssd1306_SetCursor(10, 30);
+                    ssd1306_WriteString("cambiada!", Font_6x8, White);
+                    ssd1306_UpdateScreen();
+                    HAL_UART_Transmit(&huart2, (uint8_t*)"Contrasena cambiada\n\r", 21, 10);
+
+                    // Resetear el estado de cambio de contraseña
+                    changing_password = 0;
+
+                    ssd1306_UpdateScreen();
+                }
+                return;
+            } else if (key_pressed != '*' && key_pressed != '#' && new_password_index < MAX_PASSWORD_LENGTH) {
+                // Almacenar la tecla como parte de la nueva contraseña
+                new_password[new_password_index++] = key_pressed;
+                new_password[new_password_index] = '\0'; // Null-terminar el string
+
+                // Mostrar los asteriscos mientras se ingresa la nueva contraseña
+                ssd1306_Fill(Black);
+                ssd1306_SetCursor(10, 30);
+                ssd1306_WriteString("Nueva clave:", Font_6x8, White);
+                ssd1306_SetCursor(10, 50);
+                ssd1306_WriteString("********", Font_6x8, White);  // Mostrar asteriscos
+                ssd1306_UpdateScreen();
+            }
+            return;
+        }
+
+        // Escribir la tecla en el ring buffer si no es el menú
+        if (key_pressed != '#' && key_pressed != 'D' && key_pressed != 'A' && key_pressed != 'B') {
+            ring_buffer_write(&keyboard_ring_buffer, key_pressed);
+
+            if (buffer_index < MAX_DISPLAY_CHARS) {
+                display_buffer[buffer_index++] = key_pressed;
+                display_buffer[buffer_index] = '\0'; // Null-terminar el buffer
+
+                ssd1306_Fill(Black);
+                ssd1306_SetCursor(10, 30);
+                ssd1306_WriteString(display_buffer, Font_6x8, White);
+                ssd1306_UpdateScreen();
+                HAL_UART_Transmit(&huart2, &key_pressed, 1, 10);
+            }
+            return;
+        }
+
+        // Validar la contraseña con la actual (que es "12345" por defecto o la nueva si se ha cambiado)
+        const char* my_id2 = current_password;  // Usamos la contraseña actual
+        uint8_t result = validate_password(my_id2, &keyboard_ring_buffer);
+
+        if (result == 1) {
+            HAL_UART_Transmit(&huart2, (uint8_t*)"Contrasena Correcta\n\r", 21, 10);
+            HAL_UART_Transmit(&huart2, (uint8_t*)"Iniciando...\n\r", 14, 10);
+            // Contraseña correcta
+            ssd1306_Fill(Black);
+            ssd1306_SetCursor(10, 20);
+            ssd1306_WriteString("Acceso autorizado", Font_6x8, White);
+            ssd1306_UpdateScreen();
+            authorized_access = 1;
+        } else {
+            ssd1306_Fill(Black);
+            ssd1306_SetCursor(10, 20);
+            ssd1306_WriteString("Incorrecto", Font_6x8, White);
+            ssd1306_UpdateScreen();
+            HAL_UART_Transmit(&huart2, (uint8_t*)"Incorrecto\n\r", 12, 10);
+            left_toggles = 6;
+        }
+
+        // Reiniciar buffer y display
+        ring_buffer_reset(&keyboard_ring_buffer);
+        memset(display_buffer, 0, sizeof(display_buffer));
+        buffer_index = 0;
+    }
 }
+
 
 
 void heartbeat(void)
@@ -206,55 +298,107 @@ void heartbeat(void)
 }
 void turn_signal_left(void)
 {
-	static uint32_t turn_toggle_tick = 0;
-	if (turn_toggle_tick < HAL_GetTick()){
-		if(left_toggles > 0){
-		turn_toggle_tick = HAL_GetTick()+ 200;
-		HAL_GPIO_TogglePin(D3_GPIO_Port, D3_Pin);
-		left_toggles--;
-		if(left_toggles==0){
+	if(parking_toggle==0){
+		static uint32_t turn_toggle_tick = 0;
+		if (turn_toggle_tick < HAL_GetTick()){
+			if(left_toggles > 0){
+			turn_toggle_tick = HAL_GetTick()+ 200;
+			HAL_GPIO_TogglePin(D3_GPIO_Port, D3_Pin);
+			left_toggles--;
+			if(left_toggles==0){
 
-			ssd1306_Fill(Black);
-			ssd1306_SetCursor(25, 30);
-			ssd1306_WriteString("left Light OFF", Font_7x10, White);
-			ssd1306_UpdateScreen();
+				ssd1306_Fill(Black);
+				ssd1306_SetCursor(10, 10);
+				ssd1306_WriteString("left Light OFF", Font_7x10, White);
+				ssd1306_UpdateScreen();
+				if(right_toggles!=0){
+					ssd1306_SetCursor(10, 40);
+					ssd1306_WriteString("Right Light ON", Font_7x10, White);
+					ssd1306_UpdateScreen();
 
 
+				}else{
+					ssd1306_SetCursor(10, 40);
+					ssd1306_WriteString("Right Light OFF", Font_7x10, White);
+					ssd1306_UpdateScreen();
+
+
+				}
+
+
+			}else{
+				ssd1306_Fill(Black);
+				ssd1306_SetCursor(10, 10);
+				ssd1306_WriteString("left Light ON", Font_7x10, White);
+				ssd1306_SetCursor(10, 40);
+				ssd1306_WriteString("Right Light OFF", Font_7x10, White);
+				ssd1306_UpdateScreen();
+			}
+
+		}else{
+	//		HAL_GPIO_WritePin(D3_GPIO_Port, D3_Pin,1);
 		}
 
-	}else{
-//		HAL_GPIO_WritePin(D3_GPIO_Port, D3_Pin,1);
+	  }
+
 	}
 
-  }
 }
 
 void turn_signal_right (void){
+	if(parking_toggle==0){
+		static uint32_t tunr_togle_tick = 0;
+		if(tunr_togle_tick  < HAL_GetTick() ){
+			if(right_toggles> 0){
+				tunr_togle_tick = HAL_GetTick() + 200;
+				HAL_GPIO_TogglePin(D4_GPIO_Port, D4_Pin);
+				right_toggles--;
 
-	static uint32_t tunr_togle_tick = 0;
-	if(tunr_togle_tick  < HAL_GetTick() ){
-		if(right_toggles> 0){
-			tunr_togle_tick = HAL_GetTick() + 200;
-			HAL_GPIO_TogglePin(D4_GPIO_Port, D4_Pin);
-			right_toggles--;
+				if(right_toggles==0){
 
-			if(right_toggles==0){
-//				ssd1306_Fill(Black);
-//				ssd1306_SetCursor(25, 10);
-//				ssd1306_WriteString("right Light OFF", Font_7x10, White);
-//				ssd1306_UpdateScreen();
+					ssd1306_Fill(Black);
+					ssd1306_SetCursor(10, 40);
+					ssd1306_WriteString("Right Light OFF", Font_7x10, White);
+					ssd1306_UpdateScreen();
+					if(right_toggles!=0){
+						ssd1306_SetCursor(10, 10);
+						ssd1306_WriteString("light Light ON", Font_7x10, White);
+						ssd1306_UpdateScreen();
+
+
+					}else{
+						ssd1306_SetCursor(10, 10);
+						ssd1306_WriteString("light Light OFF", Font_7x10, White);
+						ssd1306_UpdateScreen();
+
+
+					}
+
+
+				}else{
+					ssd1306_Fill(Black);
+					ssd1306_SetCursor(10, 10);
+					ssd1306_WriteString("left Light OFF", Font_7x10, White);
+					ssd1306_SetCursor(10, 40);
+					ssd1306_WriteString("Right Light ON", Font_7x10, White);
+					ssd1306_UpdateScreen();
+				}
+
+				}
+
+
+
+			} else{
+	//			HAL_GPIO_WritePin(D4_GPIO_Port, D4_Pin, 1);
 
 			}
 
 
+	}
 
-		} else{
-//			HAL_GPIO_WritePin(D4_GPIO_Port, D4_Pin, 1);
-
-		}
 
 	}
-}
+
 
 void signal_parking_light (void){
 
@@ -266,11 +410,18 @@ void signal_parking_light (void){
 			HAL_GPIO_TogglePin(D3_GPIO_Port, D3_Pin);
 			parking_toggle--;
 
-		} else{
+			if(parking_toggle==0){
+
+
+			}else{
+				ssd1306_Fill(Black);
+				ssd1306_SetCursor(0, 25);
+				ssd1306_WriteString("Parking Light ON", Font_7x10, White);
+				ssd1306_UpdateScreen();
+			}
 
 
 		}
-
 	}
 }
 
@@ -365,6 +516,10 @@ void handle_parking_lights(GPIO_TypeDef* GPIO_Port_Left, uint16_t GPIO_Pin_Left,
             *toggles = 0xEEEE;  // Parpadeo continuo para las luces de estacionamiento
             HAL_UART_Transmit(&huart2, uart_msg_on, strlen(uart_msg_on), 10);
         } else if (*counter >= 2) {
+			ssd1306_Fill(Black);
+			ssd1306_SetCursor(0, 25);
+			ssd1306_WriteString("parking Light OFF", Font_7x10, White);
+			ssd1306_UpdateScreen();
             *toggles = 0;  // Apagar ambas luces
             HAL_UART_Transmit(&huart2, uart_msg_off, strlen(uart_msg_off), 10);
             *counter = 0;
@@ -413,10 +568,18 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   ssd1306_Init();
-  ssd1306_SetCursor(25, 30);
-  ssd1306_WriteString("Hello World!", Font_7x10, White);
+  ssd1306_SetCursor(0, 10);
+  ssd1306_UpdateScreen();
+  ssd1306_WriteString("Bienvenido", Font_6x8, White);
+  ssd1306_SetCursor(0, 30);
+  ssd1306_UpdateScreen();
+  ssd1306_WriteString("Ingrese la ", Font_6x8, White);
+  ssd1306_SetCursor(0, 50);
+  ssd1306_WriteString("Contraseña", Font_6x8, White);
   ssd1306_UpdateScreen();
 
+
+  ring_buffer_init(&keyboard_ring_buffer, keyboard_buffer_memory, BUFFER_CAPACITY);
   ring_buffer_init(&usart2_rb, usart2_buffer, USART2_BUFFER_SIZE);
   /* USER CODE END 2 */
 
@@ -426,13 +589,34 @@ int main(void)
   //HAL_UART_Receive_IT(&huart2, &usart2_rx, 1); // enable interrupt for USART2 Rx
   ATOMIC_SET_BIT(USART2->CR1, USART_CR1_RXNEIE); // usando un funcion mas liviana para reducir memoria
   while (1) {
+      if(detected_b!=0){
+      	authorized_access=0;
+      	detected_d=0;
+        ssd1306_Fill(Black);
+        ssd1306_WriteString("Bienvenido", Font_6x8, White);
+        ssd1306_SetCursor(0, 30);
+        ssd1306_UpdateScreen();
+        ssd1306_WriteString("Ingrese la ", Font_6x8, White);
+        ssd1306_SetCursor(0, 50);
+        ssd1306_WriteString("Contraseña", Font_6x8, White);
+        ssd1306_UpdateScreen();
+        detected_d=0;
+        detected_b=0;
 
-	  turn_signal_left();
-	  turn_signal_right();
-	  signal_parking_light();
-	  heartbeat();
+
+      }
 
 
+	  if(authorized_access==1){
+
+
+
+
+          heartbeat();
+    	  turn_signal_left();
+    	  turn_signal_right();
+    	  signal_parking_light();
+	  }
 
 
 

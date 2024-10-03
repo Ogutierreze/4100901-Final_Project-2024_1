@@ -25,9 +25,6 @@ void flashing_signal(GPIO_TypeDef* GPIO_Port, uint16_t GPIO_Pin, uint32_t interv
 
             // Reducir el contador de parpadeos
             (*toggles_count)--;
-        } else {
-            // Si no quedan parpadeos, asegurarse de que el pin esté apagado
-            HAL_GPIO_WritePin(GPIO_Port, GPIO_Pin, GPIO_PIN_RESET);
         }
     }
 }

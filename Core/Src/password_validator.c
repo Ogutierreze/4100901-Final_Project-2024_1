@@ -13,34 +13,30 @@
 uint8_t validate_password(const char *correct_password, ring_buffer_t *keyboard_ring_buffer) {
     uint8_t byte = 0;
     uint8_t id_incorrect = 0;
-    uint8_t password_length = strlen(correct_password);
+    uint8_t password_length = sizeof(correct_password);
 
     // Leer del buffer y comparar con la clave correcta
-    for (uint8_t idx = 0; idx < password_length; idx++) {
+    for (uint8_t idx = 0; idx < password_length-1; idx++) {
         if (ring_buffer_read(keyboard_ring_buffer, &byte) != 0) {
             if (byte != correct_password[idx]) {
                 id_incorrect = 1;  // Marcar como incorrecto si no coincide
                 break;
-            }
+            }else{id_incorrect=0;}
+
         } else {
-            id_incorrect = 0;  // Si no hay suficientes caracteres en el buffer
+            id_incorrect = 1;  // Si no hay suficientes caracteres en el buffer
             break;
         }
     }
 
-    if (id_incorrect == 1) {
+    if (id_incorrect == 0) {
         // Contraseña correcta
-        ssd1306_Fill(Black);
-        ssd1306_SetCursor(10, 20);
-        ssd1306_WriteString("Contrasena correcta", Font_6x8, White);
-        ssd1306_UpdateScreen();
+
+
         return 1;
     } else {
         // Contraseña incorrecta
-        ssd1306_Fill(Black);
-        ssd1306_SetCursor(10, 20);
-        ssd1306_WriteString("Incorrecta", Font_6x8, White);
-        ssd1306_UpdateScreen();
+
         return 0;
     }
 }
