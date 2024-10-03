@@ -204,7 +204,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
         // Si estamos en el estado de cambiar la contraseña
         if (changing_password) {
-            if (key_pressed == '#') {
+            if (key_pressed == '#' ) {
                 // Cuando el usuario presiona '#', validar la contraseña ingresada
                 if (new_password_index > 0) {
                     strncpy(current_password, new_password, MAX_PASSWORD_LENGTH);  // Guardar la nueva contraseña
@@ -539,7 +539,6 @@ void handle_parking_lights(GPIO_TypeDef* GPIO_Port_Left, uint16_t GPIO_Pin_Left,
   */
 int main(void)
 {
-
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -589,9 +588,26 @@ int main(void)
   //HAL_UART_Receive_IT(&huart2, &usart2_rx, 1); // enable interrupt for USART2 Rx
   ATOMIC_SET_BIT(USART2->CR1, USART_CR1_RXNEIE); // usando un funcion mas liviana para reducir memoria
   while (1) {
+
+	  const char my_id1[4] = "open";
+	  if(ring_buffer_is_empty(&usart2_rb)==0){
+		  validate_uart=validate_password(my_id1,&usart2_rb);
+		  if(validate_uart==1 ){
+
+	          HAL_UART_Transmit(&huart2, "acceso permitido\n\r",18 , 10);
+
+		  }else if(validate_uart==0){
+	          HAL_UART_Transmit(&huart2, "acceso denegado\n\r",17 , 10);
+
+		  }
+	  }
+
+
+
+
+
       if(detected_b!=0){
       	authorized_access=0;
-      	detected_d=0;
         ssd1306_Fill(Black);
         ssd1306_WriteString("Bienvenido", Font_6x8, White);
         ssd1306_SetCursor(0, 30);
@@ -600,7 +616,6 @@ int main(void)
         ssd1306_SetCursor(0, 50);
         ssd1306_WriteString("Contraseña", Font_6x8, White);
         ssd1306_UpdateScreen();
-        detected_d=0;
         detected_b=0;
 
 
