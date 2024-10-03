@@ -68,7 +68,7 @@ uint32_t incorrect_password_interval = 125;  // 125 ms entre parpadeos
 uint16_t left_toggles2=0;
 uint8_t authorized_access=0;
 uint8_t flag_parking;
-uint8_t validate_uart=2;
+uint8_t validate_uart=0xFF;
 uint8_t key_pressed=0xFF;
 uint8_t detected_d=0;
 uint8_t detected_a=0;
@@ -428,6 +428,33 @@ void signal_parking_light (void){
 
 
 
+uint8_t validate_password_ring_buffers(const char *correct_password, ring_buffer_t *input_buffer) {
+    uint8_t password_length = strlen(correct_password);  // Longitud de la contraseña
+
+    // Verificar si el tamaño del buffer es suficiente antes de leer
+    if (ring_buffer_size(input_buffer) < password_length) {
+        return 0;  // Si el buffer no tiene suficientes caracteres, retornar 0 (acceso denegado)
+    }
+
+    // Crear un buffer temporal para almacenar los datos leídos del ring buffer
+    char temp_buffer[password_length + 1];  // Un byte extra para el carácter nulo
+
+    // Leer el bloque completo de datos desde el ring buffer
+    for (uint8_t i = 0; i < password_length; i++) {
+        ring_buffer_read(input_buffer, (uint8_t *)&temp_buffer[i]);  // Leer del buffer circular
+    }
+
+    // Asegurarse de que el buffer temporal esté null-terminated
+    temp_buffer[password_length] = '\0';
+
+    // Comparar los datos del buffer temporal con la contraseña
+    if (memcmp(temp_buffer, correct_password, password_length) == 0) {
+        return 1;  // Las contraseñas coinciden, acceso permitido
+    } else {
+        return 0;  // Las contraseñas no coinciden, acceso denegado
+    }
+}
+
 void handle_all_buttons(uint16_t GPIO_Pin) {
     // Lógica para apagar la luz derecha si se presiona S1 (luz izquierda)
     if (GPIO_Pin == S1_Pin) {
@@ -474,6 +501,9 @@ void handle_all_buttons(uint16_t GPIO_Pin) {
 
     }
 }
+
+
+
 
 
 // Función para manejar el botón y los toggles (izquierda o derecha)
@@ -531,6 +561,18 @@ void handle_parking_lights(GPIO_TypeDef* GPIO_Port_Left, uint16_t GPIO_Pin_Left,
         }
     }
 }
+
+
+void transmit_ring_buffer(ring_buffer_t *rb, UART_HandleTypeDef *huart) {
+    uint8_t data;
+
+    // Mientras haya datos en el ring buffer
+    while (ring_buffer_read(rb, &data)) {
+        // Transmitir cada byte leído vía UART
+        HAL_UART_Transmit(huart, &data, 1, HAL_MAX_DELAY);
+    }
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -576,7 +618,8 @@ int main(void)
   ssd1306_SetCursor(0, 50);
   ssd1306_WriteString("Contraseña", Font_6x8, White);
   ssd1306_UpdateScreen();
-
+  const char my_id1[5] = "open";
+  uint8_t byte=0;
 
   ring_buffer_init(&keyboard_ring_buffer, keyboard_buffer_memory, BUFFER_CAPACITY);
   ring_buffer_init(&usart2_rb, usart2_buffer, USART2_BUFFER_SIZE);
@@ -589,22 +632,25 @@ int main(void)
   ATOMIC_SET_BIT(USART2->CR1, USART_CR1_RXNEIE); // usando un funcion mas liviana para reducir memoria
   while (1) {
 
-	  const char my_id1[4] = "open";
-	  if(ring_buffer_is_empty(&usart2_rb)==0){
-		  validate_uart=validate_password(my_id1,&usart2_rb);
-		  if(validate_uart==1 ){
 
-	          HAL_UART_Transmit(&huart2, "acceso permitido\n\r",18 , 10);
+      // Verificar si hay datos en el buffer
+      if (ring_buffer_is_empty(&usart2_rb) == 0) {
+    	  transmit_ring_buffer(&usart2_rb, &huart2);
+          // Llamar a la función de validación
+          uint8_t validate_uart = validate_password_ring_buffers(my_id1, &usart2_rb);
 
-		  }else if(validate_uart==0){
-	          HAL_UART_Transmit(&huart2, "acceso denegado\n\r",17 , 10);
-
-		  }
-	  }
-
-
+          // Si la validación es correcta
+          if (validate_uart == 1) {
+              HAL_UART_Transmit(&huart2, (uint8_t*)"acceso permitido\n\r", 18, 10);
+          } else {
+              HAL_UART_Transmit(&huart2, (uint8_t*)"acceso denegado\n\r", 17, 10);
 
 
+          }
+
+          // Limpiar el buffer después de la validación
+          ring_buffer_reset(&usart2_rb);
+      }
 
       if(detected_b!=0){
       	authorized_access=0;
@@ -617,16 +663,10 @@ int main(void)
         ssd1306_WriteString("Contraseña", Font_6x8, White);
         ssd1306_UpdateScreen();
         detected_b=0;
-
-
       }
 
 
 	  if(authorized_access==1){
-
-
-
-
           heartbeat();
     	  turn_signal_left();
     	  turn_signal_right();
